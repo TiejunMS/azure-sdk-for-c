@@ -13,7 +13,7 @@ void az_precondition_failed_default()
   /* By default, when a precondition fails the calling thread is suspended forever */
   while (true)
   {
-    az_platform_sleep_msec(INT32_MAX);
+    //az_platform_sleep_msec(INT32_MAX);
   }
 }
 

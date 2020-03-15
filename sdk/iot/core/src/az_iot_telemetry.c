@@ -60,6 +60,7 @@ AZ_NODISCARD az_result az_iot_hub_client_telemetry_publish_topic_get(
     return AZ_ERROR_INSUFFICIENT_SPAN_CAPACITY;
   }
 
+#if 0
   // Build topic string
   AZ_RETURN_IF_FAILED(az_span_append(mqtt_topic, telemetry_topic_prefix, out_mqtt_topic));
   AZ_RETURN_IF_FAILED(az_span_append(*out_mqtt_topic, client->_internal.device_id, out_mqtt_topic));
@@ -92,6 +93,44 @@ AZ_NODISCARD az_result az_iot_hub_client_telemetry_publish_topic_get(
 
   AZ_RETURN_IF_FAILED(
       az_span_append_uint8(*out_mqtt_topic, telemetry_null_terminator, out_mqtt_topic));
+#else
+  uint32_t index;
+  uint8_t *buffer = az_span_ptr(mqtt_topic);
+  
+  memcpy(buffer, az_span_ptr(telemetry_topic_prefix), az_span_length(telemetry_topic_prefix));
+  index = az_span_length(telemetry_topic_prefix);
+  memcpy(&buffer[index], az_span_ptr(client->_internal.device_id), az_span_length(client->_internal.device_id));
+  index += az_span_length(client->_internal.device_id);
+
+  if (az_span_length(*module_id) != 0)
+  {
+    memcpy(&buffer[index], az_span_ptr(telemetry_topic_modules_mid), az_span_length(telemetry_topic_modules_mid));
+    index += az_span_length(telemetry_topic_modules_mid);
+  }
+  
+  memcpy(&buffer[index], az_span_ptr(telemetry_topic_suffix), az_span_length(telemetry_topic_suffix));
+  index += az_span_length(telemetry_topic_suffix);
+
+  if (properties != NULL)
+  {
+    buffer[index++] = telemetry_prop_delim;
+    memcpy(&buffer[index], az_span_ptr(properties->_internal.properties), az_span_length(properties->_internal.properties));
+    index += az_span_length(properties->_internal.properties);
+  }
+
+  if (az_span_length(*user_agent) != 0)
+  {
+    properties == NULL
+            ? (buffer[index++] = telemetry_prop_delim)
+            : (buffer[index++] = telemetry_prop_separator);
+    memcpy(&buffer[index], az_span_ptr(*user_agent), az_span_length(*user_agent));
+    index += az_span_length(*user_agent);
+  }
+  
+  buffer[index++] = telemetry_null_terminator;
+
+  *out_mqtt_topic = az_span_init(buffer, index, az_span_capacity(mqtt_topic));
+#endif
 
   return AZ_OK;
 }
